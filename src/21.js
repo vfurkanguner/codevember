@@ -1,23 +1,15 @@
-const createLine = require('./gl/gl-line-3d')
-const createOrbit = require('orbit-controls')
-const createCamera = require('perspective-camera')
-const createShader = require('gl-shader')
-const glAudioAnalyser = require('gl-audio-analyser')
-const error = require('./fatal-error')()
-const desktopOnly = require('./desktop-only')
-const isMobile = require('./is-mobile')
+import createLine from './gl/gl-line-3d';
+import createOrbit from 'orbit-controls';
+import createCamera from 'perspective-camera';
+import createShader from 'gl-shader';
+import glAudioAnalyser from 'gl-audio-analyser';
+import vignette from 'gl-vignette-background';
 
-const assign = require('object-assign')
-const setIdentity = require('gl-mat4/identity')
-const newArray = require('array-range')
-const once = require('once')
-const lerp = require('lerp')
-const vignette = require('gl-vignette-background')
-const hexRgbByte = require('hex-rgb')
-const hexRgb = (str) => hexRgbByte(str).map(x => x / 255)
+import { hexRgb, lerp, newArray, isMobile, setIdentity, getWebGLContext } from './utils';
+
+const glslify = require('glslify');
 
 const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent)
-const glslify = require('glslify')
 const steps = 200
 const segments = isSafari ? 50 : 100
 const radius = 0.1
@@ -31,8 +23,10 @@ const defaults = {
 }
 
 const presets = [
-  { gradient: [ '#fff', '#4f4f4f' ],
-    color: '#000', useHue: true },
+  {
+    gradient: ['#00041B', '#00041B'],
+    color: '#fff', useHue: true
+  },
   // other styles that look decent
   // { gradient: [ '#fff', '#4f4f4f' ],
   //   color: '#000' },
@@ -41,17 +35,17 @@ const presets = [
 ]
 
 let settings = presets[Math.floor(Math.random() * presets.length)]
-settings = assign({}, defaults, settings)
+settings = Object.assign({}, defaults, settings)
 
 const colorVec = hexRgb(settings.color)
 
-const gl = require('webgl-context')()
+const gl = getWebGLContext();
 const canvas = gl.canvas
 document.body.appendChild(canvas)
 
-const AudioContext = window.AudioContext || window.webkitAudioContext
-const audioPlayer = require('web-audio-player')
-const supportedTextures = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioPlayer = require('web-audio-player');
+const supportedTextures = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
 
 const app = require('canvas-loop')(canvas, {
   scale: window.devicePixelRatio
@@ -61,10 +55,10 @@ const background = vignette(gl)
 background.style({
   aspect: 1,
   color1: hexRgb(settings.gradient[0]),
-  color2: hexRgb(settings.gradient[1]),
-  smoothing: [ -0.5, 1.0 ],
+  // color2: hexRgb(settings.gradient[1]),
+  smoothing: [-0.5, 1.0],
   noiseAlpha: 0.1,
-  offset: [ -0.05, -0.15 ]
+  offset: [-0.05, -0.15]
 })
 
 const identity = setIdentity([])
@@ -94,17 +88,17 @@ const lines = paths.map(path => {
 let analyser
 start()
 
-function start () {
+function start() {
   if (supportedTextures < 1) {
-    return error('This demo requires a GPU with vertex texture sampling.')
+    throw new Error('Not supported')
   }
   if (!AudioContext) {
-    return error('This demo requires a WebAudio capable browser.')
+    throw new Error('This demo requires a WebAudio capable browser.')
   }
   if (isMobile()) {
-    return desktopOnly()
+    return 'Cant use on mobile'
   }
-  
+
   const audioContext = new AudioContext()
   const audio = audioPlayer(src, {
     context: audioContext,
@@ -140,7 +134,7 @@ app.on('tick', dt => {
   const size = Math.min(width, height) * 1.5
   gl.disable(gl.DEPTH_TEST)
   background.style({
-    scale: [ 1 / width * size, 1 / height * size ]
+    scale: [1 / width * size, 1 / height * size]
   })
   background.draw()
 
@@ -172,9 +166,9 @@ app.on('tick', dt => {
   })
 })
 
-function createSegment () {
+function createSegment() {
   return newArray(steps).map((i, _, list) => {
     const x = lerp(-1, 1, i / (list.length - 1))
-    return [ x, 0, 0 ]
+    return [x, 0, 0]
   })
 }
